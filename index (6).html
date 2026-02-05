@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EDMap</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #FAFAFA;
+            color: #1A1A1A;
+            font-weight: 400;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: white;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            border-bottom: 1px solid #E8E8E8;
+            position: relative;
+            z-index: 1000;
+        }
+        
+        .logo {
+            height: 32px;
+            width: auto;
+        }
+        
+        .header-text {
+            flex: 1;
+        }
+        
+        .header h1 {
+            font-size: 1.1em;
+            margin: 0;
+            font-weight: 600;
+            color: #00438C;
+            letter-spacing: -0.02em;
+        }
+
+        .toggle-sidebar-btn {
+            background: #007973;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: none;
+        }
+
+        .toggle-sidebar-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .container {
+            display: flex;
+            height: calc(100vh - 56px);
+            position: relative;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: white;
+            border-right: 1px solid #E8E8E8;
+            overflow-y: auto;
+            padding: 12px;
+            transition: transform 0.3s ease, margin-left 0.3s ease;
+            position: relative;
+            z-index: 999;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+            margin-left: -300px;
+        }
+
+        .sidebar-close-btn {
+            display: none;
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #f5f5f5;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            z-index: 10;
+        }
+
+        .sidebar-close-btn:active {
+            background: #e0e0e0;
+        }
+        
+        .sidebar h2 {
+            color: #1A1A1A;
+            font-size: 0.85em;
+            margin-bottom: 10px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .section {
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #E8E8E8;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+        
+        .upload-section {
+            margin-bottom: 12px;
+        }
+        
+        .upload-area {
+            border: 1.5px dashed #E8E8E8;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            background: #FAFAFA;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+        
+        .upload-area:hover {
+            border-color: #007973;
+            background: white;
+        }
+
+        .upload-area:active {
+            transform: scale(0.98);
+        }
+        
+        .upload-icon {
+            font-size: 28px;
+            margin-bottom: 6px;
+        }
+        
+        .upload-text {
+            color: #666;
+            font-size: 0.8em;
+            line-height: 1.4;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+
+        .map-style-selector {
+            margin-bottom: 12px;
+        }
+
+        .map-style-selector select {
+            width: 100%;
+            padding: 9px;
+            border: 1px solid #E8E8E8;
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-family: 'Inter', sans-serif;
+            background: white;
+            cursor: pointer;
+        }
+
+        .drawing-tools {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .draw-btn {
+            padding: 9px;
+            background: white;
+            border: 1px solid #E8E8E8;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .draw-btn:hover {
+            border-color: #007973;
+            background: #f9f9f9;
+        }
+
+        .draw-btn:active {
+            transform: scale(0.95);
+        }
+
+        .draw-btn.active {
+            background: #007973;
+            color: white;
+            border-color: #007973;
+        }
+        
+        .file-list {
+            margin-top: 10px;
+        }
+        
+        .file-list-header {
+            font-size: 0.7em;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-bottom: 6px;
+        }
+        
+        .file-item {
+            background: white;
+            border: 1px solid #E8E8E8;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 6px;
+            transition: all 0.2s;
+        }
+        
+        .file-item:hover {
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+        
+        .file-name {
+            font-weight: 500;
+            color: #1A1A1A;
+            font-size: 0.8em;
+            margin-bottom: 5px;
+        }
+        
+        .file-uploader {
+            font-size: 0.7em;
+            color: #888;
+            margin-bottom: 6px;
+        }
+        
+        .file-actions {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .file-actions .btn {
+            flex: 1;
+            padding: 6px;
+            border: 1px solid #E8E8E8;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+        
+        .file-actions .btn:hover {
+            background: #f5f5f5;
+        }
+
+        .file-actions .btn:active {
+            transform: scale(0.95);
+        }
+        
+        .file-actions .btn-toggle.hidden {
+            opacity: 0.5;
+        }
+        
+        .file-actions .btn-remove:hover {
+            background: #fee;
+            border-color: #fcc;
+            color: #c00;
+        }
+        
+        .share-section button,
+        .ai-section button {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #007973 0%, #1B9B97 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .share-section button:hover,
+        .ai-section button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(0, 121, 115, 0.3);
+        }
+
+        .share-section button:active,
+        .ai-section button:active {
+            transform: translateY(0);
+        }
+        
+        #map {
+            flex: 1;
+            position: relative;
+        }
+        
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+        
+        .modal-overlay.active {
+            display: block;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            max-width: 90%;
+            width: 400px;
+        }
+        
+        .modal.active {
+            display: block;
+        }
+        
+        .modal h3 {
+            margin-bottom: 16px;
+            color: #1A1A1A;
+            font-size: 1.1em;
+        }
+        
+        .modal input,
+        .modal textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 12px;
+            border: 1px solid #E8E8E8;
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9em;
+        }
+        
+        .modal textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        
+        .modal-buttons button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .modal-buttons .btn-primary {
+            background: #007973;
+            color: white;
+        }
+        
+        .modal-buttons .btn-primary:hover {
+            background: #006066;
+        }
+
+        .modal-buttons .btn-primary:active {
+            transform: scale(0.97);
+        }
+        
+        .modal-buttons .btn-secondary {
+            background: #f5f5f5;
+            color: #666;
+        }
+        
+        .modal-buttons .btn-secondary:hover {
+            background: #e8e8e8;
+        }
+
+        .modal-buttons .btn-secondary:active {
+            transform: scale(0.97);
+        }
+
+        .ai-chat-container {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            width: 100%;
+            max-width: 400px;
+            height: 0;
+            background: white;
+            border: 1px solid #E8E8E8;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
+            z-index: 998;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: height 0.3s ease;
+        }
+
+        .ai-chat-container.active {
+            height: 450px;
+        }
+
+        .ai-chat-header {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #007973 0%, #1B9B97 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ai-chat-header h3 {
+            margin: 0;
+            font-size: 0.95em;
+        }
+
+        .ai-chat-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.3em;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+        }
+
+        .ai-chat-messages {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            background: #fafafa;
+        }
+
+        .ai-message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            line-height: 1.4;
+            max-width: 85%;
+        }
+
+        .ai-message.user {
+            background: #007973;
+            color: white;
+            margin-left: auto;
+        }
+
+        .ai-message.assistant {
+            background: white;
+            color: #1A1A1A;
+            border: 1px solid #E8E8E8;
+        }
+
+        .ai-chat-input-area {
+            padding: 12px;
+            border-top: 1px solid #E8E8E8;
+            display: flex;
+            gap: 8px;
+        }
+
+        .ai-chat-input-area input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #E8E8E8;
+            border-radius: 6px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85em;
+        }
+
+        .ai-chat-input-area button {
+            padding: 8px 16px;
+            background: #007973;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .ai-chat-input-area button:active {
+            transform: scale(0.95);
+        }
+
+        /* Mobile Styles */
+        @media (max-width: 768px) {
+            .header {
+                padding: 10px 14px;
+            }
+
+            .header h1 {
+                font-size: 1em;
+            }
+
+            .logo {
+                height: 28px;
+            }
+
+            .toggle-sidebar-btn {
+                display: block;
+                padding: 6px 12px;
+                font-size: 0.8em;
+            }
+
+            .container {
+                height: calc(100vh - 48px);
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 48px;
+                left: 0;
+                bottom: 0;
+                width: 85%;
+                max-width: 280px;
+                box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+                transform: translateX(-100%);
+                margin-left: 0;
+                padding: 40px 12px 12px;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .sidebar.collapsed {
+                transform: translateX(-100%);
+                margin-left: 0;
+            }
+
+            .sidebar-close-btn {
+                display: block;
+            }
+
+            .section {
+                margin-bottom: 12px;
+                padding-bottom: 12px;
+            }
+
+            .upload-area {
+                padding: 12px;
+            }
+
+            .upload-icon {
+                font-size: 24px;
+            }
+
+            .upload-text {
+                font-size: 0.75em;
+            }
+
+            .drawing-tools {
+                gap: 5px;
+            }
+
+            .draw-btn {
+                padding: 8px;
+                font-size: 0.75em;
+            }
+
+            .file-item {
+                padding: 8px;
+            }
+
+            .file-name {
+                font-size: 0.75em;
+            }
+
+            .file-uploader {
+                font-size: 0.65em;
+            }
+
+            .file-actions .btn {
+                padding: 5px;
+                font-size: 0.8em;
+            }
+
+            .share-section button,
+            .ai-section button {
+                padding: 9px;
+                font-size: 0.8em;
+            }
+
+            .ai-chat-container {
+                max-width: 100%;
+                border-radius: 12px 12px 0 0;
+            }
+
+            .ai-chat-container.active {
+                height: 60vh;
+                max-height: 400px;
+            }
+
+            .modal {
+                width: 90%;
+                max-width: 320px;
+                padding: 20px;
+            }
+
+            .modal h3 {
+                font-size: 1em;
+            }
+
+            .modal input,
+            .modal textarea {
+                padding: 8px;
+                font-size: 0.85em;
+            }
+        }
+
+        /* Leaflet popup custom styles */
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .leaflet-popup-content {
+            margin: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85em;
+        }
+
+        .popup-title {
+            font-weight: 600;
+            color: #00438C;
+            margin-bottom: 8px;
+            font-size: 1.05em;
+        }
+
+        .popup-field {
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+
+        .popup-label {
+            font-weight: 500;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .popup-value {
+            color: #1A1A1A;
+        }
+
+        .popup-custom {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #E8E8E8;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%2300438C'/%3E%3Ctext x='50' y='65' font-family='Arial' font-size='40' font-weight='bold' fill='white' text-anchor='middle'%3EED%3C/text%3E%3C/svg%3E" alt="EDMap" class="logo">
+        <div class="header-text">
+            <h1>EDMap</h1>
+        </div>
+        <button class="toggle-sidebar-btn" onclick="toggleSidebar()">☰ Menü</button>
+    </div>
+
+    <div class="container">
+        <div class="sidebar" id="sidebar">
+            <button class="sidebar-close-btn" onclick="toggleSidebar()">✕</button>
+
+            <div class="section map-style-selector">
+                <h2>Harita Stili</h2>
+                <select id="mapStyleSelect" onchange="changeMapStyle()">
+                    <option value="light">Açık Tema</option>
+                    <option value="dark">Koyu Tema</option>
+                    <option value="satellite">Uydu Görünümü</option>
+                    <option value="terrain">Arazi Görünümü</option>
+                </select>
+            </div>
+
+            <div class="section upload-section">
+                <h2>Dosya Yükle</h2>
+                <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Tıkla ve dosya seç<br><small>(GeoJSON, KML, KMZ, GPX)</small></div>
+                </div>
+                <input type="file" id="fileInput" accept=".geojson,.json,.kml,.kmz,.gpx" onchange="handleFileUpload(event)">
+                <div class="file-list" id="fileList"></div>
+            </div>
+
+            <div class="section">
+                <h2>Çizim Araçları</h2>
+                <div class="drawing-tools">
+                    <button class="draw-btn" onclick="startDrawing('marker')">📍 İşaret</button>
+                    <button class="draw-btn" onclick="startDrawing('polyline')">📏 Çizgi</button>
+                    <button class="draw-btn" onclick="startDrawing('polygon')">⬟ Alan</button>
+                    <button class="draw-btn" onclick="startDrawing('circle')">⭕ Daire</button>
+                </div>
+            </div>
+
+            <div class="section share-section">
+                <h2>Paylaş</h2>
+                <button onclick="shareCurrentView()">🔗 Link Oluştur</button>
+            </div>
+
+            <div class="section ai-section">
+                <h2>AI Asistan</h2>
+                <button onclick="toggleAIChat()">💬 AI ile Sohbet</button>
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <!-- Name Modal -->
+    <div class="modal-overlay" id="nameModalOverlay"></div>
+    <div class="modal" id="nameModal">
+        <h3>Hoş Geldiniz!</h3>
+        <input type="text" id="userName" placeholder="Adınız" required>
+        <input type="text" id="userSurname" placeholder="Soyadınız" required>
+        <div class="modal-buttons">
+            <button class="btn-primary" onclick="saveName()">Devam Et</button>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal-overlay" id="editModalOverlay"></div>
+    <div class="modal" id="editModal">
+        <h3>Dosya Düzenle</h3>
+        <input type="text" id="editFileName" placeholder="Dosya Adı" disabled>
+        <input type="text" id="editTitle" placeholder="Özel Başlık (Opsiyonel)">
+        <textarea id="editNotes" placeholder="Notlar (Opsiyonel)"></textarea>
+        <div class="modal-buttons">
+            <button class="btn-primary" onclick="saveEdit()">Kaydet</button>
+            <button class="btn-secondary" onclick="closeEditModal()">İptal</button>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div class="modal-overlay" id="shareModalOverlay"></div>
+    <div class="modal" id="shareModal">
+        <h3>Haritayı Paylaş</h3>
+        <input type="text" id="shareLink" readonly>
+        <div class="modal-buttons">
+            <button class="btn-primary" onclick="copyShareLink()">Linki Kopyala</button>
+            <button class="btn-secondary" onclick="closeShareModal()">Kapat</button>
+        </div>
+    </div>
+
+    <!-- AI Chat Container -->
+    <div class="ai-chat-container" id="aiChatContainer">
+        <div class="ai-chat-header">
+            <h3>🤖 AI Asistan</h3>
+            <button class="ai-chat-close" onclick="toggleAIChat()">×</button>
+        </div>
+        <div class="ai-chat-messages" id="aiChatMessages"></div>
+        <div class="ai-chat-input-area">
+            <input type="text" id="aiChatInput" placeholder="Bir soru sorun...">
+            <button onclick="sendAIMessage()">Gönder</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tmcw/togeojson@5.8.1/dist/togeojsons.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, get, push } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        let database = null;
+        let isFirebaseInitialized = false;
+
+        try {
+            const firebaseConfig = {
+                apiKey: "AIzaSyBXq7cWBOjEr_L3wx9LNOb3a89qWnmBo8s",
+                authDomain: "edmap-2a3c8.firebaseapp.com",
+                databaseURL: "https://edmap-2a3c8-default-rtdb.europe-west1.firebasedatabase.app",
+                projectId: "edmap-2a3c8",
+                storageBucket: "edmap-2a3c8.appspot.com",
+                messagingSenderId: "966409383339",
+                appId: "1:966409383339:web:d6be03d0d5869e4bfda4d9"
+            };
+
+            const app = initializeApp(firebaseConfig);
+            database = getDatabase(app);
+            isFirebaseInitialized = true;
+            console.log('Firebase başarıyla başlatıldı');
+        } catch (error) {
+            console.error('Firebase başlatma hatası:', error);
+            isFirebaseInitialized = false;
+        }
+
+        window.uploadToFirebase = async function(data) {
+            if (!isFirebaseInitialized || !database) {
+                alert('Firebase bağlantısı kurulamadı. Lütfen internet bağlantınızı kontrol edin.');
+                return null;
+            }
+            
+            try {
+                const newShareRef = push(ref(database, 'shares'));
+                await set(newShareRef, data);
+                console.log('Paylaşım başarılı:', newShareRef.key);
+                return newShareRef.key;
+            } catch (error) {
+                console.error('Firebase yükleme hatası:', error);
+                alert('Paylaşım oluşturulamadı: ' + error.message);
+                return null;
+            }
+        };
+
+        window.loadFromFirebase = async function(shareId) {
+            if (!isFirebaseInitialized || !database) {
+                console.error('Firebase hazır değil');
+                return null;
+            }
+            
+            try {
+                const shareRef = ref(database, `shares/${shareId}`);
+                const snapshot = await get(shareRef);
+                
+                if (snapshot.exists()) {
+                    console.log('Veri başarıyla yüklendi');
+                    return snapshot.val();
+                } else {
+                    console.error('Paylaşım bulunamadı:', shareId);
+                    alert('Bu paylaşım bulunamadı veya silinmiş olabilir.');
+                    return null;
+                }
+            } catch (error) {
+                console.error('Firebase okuma hatası:', error);
+                alert('Paylaşım yüklenirken hata oluştu: ' + error.message);
+                return null;
+            }
+        };
+
+        window.firebaseReady = () => isFirebaseInitialized;
+    </script>
+
+    <script>
+        let map;
+        let currentUser = '';
+        let loadedFiles = [];
+        let drawnItems;
+        let currentDrawMode = null;
+        let currentEditingIndex = -1;
+        let currentShareId = null;
+        let currentMapStyle = 'light';
+
+        const mapStyles = {
+            light: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            terrain: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
+        };
+
+        let currentTileLayer;
+
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: true
+            }).setView([39.9334, 32.8597], 6);
+
+            currentTileLayer = L.tileLayer(mapStyles.light, {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+
+            map.on(L.Draw.Event.CREATED, function(e) {
+                const layer = e.layer;
+                drawnItems.addLayer(layer);
+            });
+        }
+
+        function changeMapStyle() {
+            const style = document.getElementById('mapStyleSelect').value;
+            currentMapStyle = style;
+            
+            if (currentTileLayer) {
+                map.removeLayer(currentTileLayer);
+            }
+
+            currentTileLayer = L.tileLayer(mapStyles[style], {
+                attribution: style === 'light' ? '© OpenStreetMap contributors' : 
+                            style === 'dark' ? '© CARTO' :
+                            style === 'satellite' ? '© Esri' : '© OpenTopoMap',
+                maxZoom: 19
+            }).addTo(map);
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        function showNameModal() {
+            document.getElementById('nameModalOverlay').classList.add('active');
+            document.getElementById('nameModal').classList.add('active');
+        }
+
+        function saveName() {
+            const name = document.getElementById('userName').value.trim();
+            const surname = document.getElementById('userSurname').value.trim();
+            
+            if (name && surname) {
+                currentUser = `${name} ${surname}`;
+                document.getElementById('nameModalOverlay').classList.remove('active');
+                document.getElementById('nameModal').classList.remove('active');
+            } else {
+                alert('Lütfen adınızı ve soyadınızı girin!');
+            }
+        }
+
+        async function handleFileUpload(event) {
+            if (!currentUser) {
+                showNameModal();
+                return;
+            }
+
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            
+            reader.onload = async function(e) {
+                try {
+                    let geojson;
+                    const fileName = file.name.toLowerCase();
+
+                    if (fileName.endsWith('.geojson') || fileName.endsWith('.json')) {
+                        geojson = JSON.parse(e.target.result);
+                    } else if (fileName.endsWith('.kml')) {
+                        const kml = new DOMParser().parseFromString(e.target.result, 'text/xml');
+                        geojson = toGeoJSON.kml(kml);
+                    } else if (fileName.endsWith('.kmz')) {
+                        const zip = await JSZip.loadAsync(e.target.result);
+                        const kmlFile = Object.keys(zip.files).find(name => name.endsWith('.kml'));
+                        if (kmlFile) {
+                            const kmlText = await zip.files[kmlFile].async('text');
+                            const kml = new DOMParser().parseFromString(kmlText, 'text/xml');
+                            geojson = toGeoJSON.kml(kml);
+                        }
+                    } else if (fileName.endsWith('.gpx')) {
+                        const gpx = new DOMParser().parseFromString(e.target.result, 'text/xml');
+                        geojson = toGeoJSON.gpx(gpx);
+                    }
+
+                    if (geojson) {
+                        const layer = L.geoJSON(geojson, {
+                            onEachFeature: function(feature, layer) {
+                                setupFeaturePopup(layer, feature, file.name);
+                            }
+                        });
+
+                        const fileObj = {
+                            name: file.name,
+                            uploader: currentUser,
+                            layer: layer,
+                            visible: true,
+                            customTitle: '',
+                            customNotes: ''
+                        };
+
+                        loadedFiles.push(fileObj);
+                        map.addLayer(layer);
+                        updateFileList();
+
+                        try {
+                            map.fitBounds(layer.getBounds());
+                        } catch (e) {
+                            console.log('Could not fit bounds');
+                        }
+                    }
+                } catch (error) {
+                    console.error('File processing error:', error);
+                    alert('Dosya yüklenirken hata oluştu!');
+                }
+            };
+
+            if (file.name.toLowerCase().endsWith('.kmz')) {
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.readAsText(file);
+            }
+
+            event.target.value = '';
+        }
+
+        function startDrawing(type) {
+            const buttons = document.querySelectorAll('.draw-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (currentDrawMode) {
+                currentDrawMode.disable();
+            }
+
+            const drawOptions = {
+                shapeOptions: {
+                    color: '#007973',
+                    weight: 3
+                }
+            };
+
+            switch(type) {
+                case 'marker':
+                    currentDrawMode = new L.Draw.Marker(map);
+                    break;
+                case 'polyline':
+                    currentDrawMode = new L.Draw.Polyline(map, drawOptions);
+                    break;
+                case 'polygon':
+                    currentDrawMode = new L.Draw.Polygon(map, drawOptions);
+                    break;
+                case 'circle':
+                    currentDrawMode = new L.Draw.Circle(map, drawOptions);
+                    break;
+            }
+
+            currentDrawMode.enable();
+        }
+
+        function setupFeaturePopup(layer, feature, fileName) {
+            const updatePopup = function() {
+                let content = '<div class="popup-content">';
+                
+                const fileObj = loadedFiles.find(f => f.name === fileName);
+                if (fileObj && fileObj.customTitle) {
+                    content += `<div class="popup-title">${fileObj.customTitle}</div>`;
+                } else if (feature.properties && feature.properties.name) {
+                    content += `<div class="popup-title">${feature.properties.name}</div>`;
+                }
+                
+                if (feature.properties) {
+                    for (const [key, value] of Object.entries(feature.properties)) {
+                        if (value && key !== 'name') {
+                            content += `<div class="popup-field">
+                                <span class="popup-label">${key}:</span>
+                                <span class="popup-value">${value}</span>
+                            </div>`;
+                        }
+                    }
+                }
+                
+                if (fileObj && fileObj.customNotes) {
+                    content += `<div class="popup-custom">
+                        <div class="popup-label">Notlar:</div>
+                        <div class="popup-value">${fileObj.customNotes}</div>
+                    </div>`;
+                }
+                
+                content += '</div>';
+                
+                layer.bindPopup(content);
+            };
+            
+            updatePopup();
+            layer.on('click', updatePopup);
+        }
+
+        function updateFileList() {
+            const fileList = document.getElementById('fileList');
+            
+            if (loadedFiles.length === 0) {
+                fileList.innerHTML = '';
+                return;
+            }
+            
+            let html = '<div class="file-list-header">Yüklenen Dosyalar</div>';
+            
+            loadedFiles.forEach((fileObj, index) => {
+                html += `
+                    <div class="file-item">
+                        <div class="file-name">${fileObj.name}</div>
+                        <div class="file-uploader">👤 ${fileObj.uploader}</div>
+                        <div class="file-actions">
+                            <button class="btn btn-toggle ${fileObj.visible ? '' : 'hidden'}" 
+                                onclick="toggleFileVisibility(${index})">
+                                ${fileObj.visible ? '👁️' : '🔒'}
+                            </button>
+                            <button class="btn btn-edit" onclick="openEditModal(${index})">✏️</button>
+                            <button class="btn btn-remove" onclick="removeFile(${index})">✕</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            fileList.innerHTML = html;
+        }
+
+        function toggleFileVisibility(index) {
+            const fileObj = loadedFiles[index];
+            fileObj.visible = !fileObj.visible;
+            
+            if (fileObj.visible) {
+                map.addLayer(fileObj.layer);
+            } else {
+                map.removeLayer(fileObj.layer);
+            }
+            
+            updateFileList();
+        }
+
+        function removeFile(index) {
+            if (!confirm('Bu dosyayı silmek istediğinizden emin misiniz?')) return;
+            
+            const fileObj = loadedFiles[index];
+            map.removeLayer(fileObj.layer);
+            loadedFiles.splice(index, 1);
+            updateFileList();
+        }
+
+        function openEditModal(index) {
+            currentEditingIndex = index;
+            const fileObj = loadedFiles[index];
+            
+            document.getElementById('editFileName').value = fileObj.name;
+            document.getElementById('editTitle').value = fileObj.customTitle || '';
+            document.getElementById('editNotes').value = fileObj.customNotes || '';
+            
+            document.getElementById('editModalOverlay').classList.add('active');
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModalOverlay').classList.remove('active');
+            document.getElementById('editModal').classList.remove('active');
+            currentEditingIndex = -1;
+        }
+
+        function saveEdit() {
+            if (currentEditingIndex === -1) return;
+            
+            const fileObj = loadedFiles[currentEditingIndex];
+            fileObj.customTitle = document.getElementById('editTitle').value;
+            fileObj.customNotes = document.getElementById('editNotes').value;
+            
+            closeEditModal();
+        }
+
+        async function shareCurrentView() {
+            if (loadedFiles.length === 0 && drawnItems.getLayers().length === 0) {
+                alert('Paylaşılacak içerik yok!');
+                return;
+            }
+
+            if (window.firebaseReady()) {
+                const shareData = {
+                    files: loadedFiles.map(f => ({
+                        name: f.name,
+                        uploader: f.uploader,
+                        geojson: f.layer.toGeoJSON(),
+                        customTitle: f.customTitle,
+                        customNotes: f.customNotes
+                    })),
+                    drawings: [],
+                    createdBy: currentUser,
+                    createdAt: new Date().toISOString()
+                };
+
+                drawnItems.eachLayer(layer => {
+                    shareData.drawings.push(layer.toGeoJSON());
+                });
+
+                const shareId = await window.uploadToFirebase(shareData);
+                
+                if (shareId) {
+                    const shareUrl = `${window.location.origin}${window.location.pathname}?share=${shareId}`;
+                    document.getElementById('shareLink').value = shareUrl;
+                    document.getElementById('shareModalOverlay').classList.add('active');
+                    document.getElementById('shareModal').classList.add('active');
+                }
+            } else {
+                alert('Firebase bağlantısı gerekli.');
+            }
+        }
+
+        function closeShareModal() {
+            document.getElementById('shareModalOverlay').classList.remove('active');
+            document.getElementById('shareModal').classList.remove('active');
+        }
+
+        function copyShareLink() {
+            const linkInput = document.getElementById('shareLink');
+            linkInput.select();
+            document.execCommand('copy');
+            alert('Link kopyalandı!');
+        }
+
+        async function loadShareIdFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const shareId = params.get('share');
+            
+            if (shareId) {
+                // Firebase'in hazır olmasını bekle
+                const waitForFirebase = setInterval(async () => {
+                    if (window.firebaseReady && window.firebaseReady()) {
+                        clearInterval(waitForFirebase);
+                        
+                        const data = await window.loadFromFirebase(shareId);
+                        
+                        if (data) {
+                            currentShareId = shareId;
+                            
+                            if (data.files) {
+                                for (const fileData of data.files) {
+                                    const layer = L.geoJSON(fileData.geojson);
+                                    
+                                    layer.eachLayer(subLayer => {
+                                        if (subLayer.feature) {
+                                            setupFeaturePopup(subLayer, subLayer.feature, fileData.name);
+                                        }
+                                    });
+                                    
+                                    const fileObj = {
+                                        name: fileData.name,
+                                        uploader: fileData.uploader,
+                                        layer: layer,
+                                        visible: true,
+                                        customTitle: fileData.customTitle || '',
+                                        customNotes: fileData.customNotes || ''
+                                    };
+                                    
+                                    loadedFiles.push(fileObj);
+                                    map.addLayer(layer);
+                                }
+                            }
+                            
+                            if (data.drawings) {
+                                data.drawings.forEach(drawing => {
+                                    const layer = L.geoJSON(drawing);
+                                    drawnItems.addLayer(layer);
+                                });
+                            }
+                            
+                            updateFileList();
+                        }
+                    }
+                }, 500);
+                
+                // 10 saniye sonra timeout
+                setTimeout(() => clearInterval(waitForFirebase), 10000);
+            }
+        }
+
+        function toggleAIChat() {
+            const container = document.getElementById('aiChatContainer');
+            container.classList.toggle('active');
+        }
+
+        async function sendAIMessage() {
+            const input = document.getElementById('aiChatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            addAIMessage(message, 'user');
+            input.value = '';
+            
+            addAIMessage('Bu özellik henüz aktif değil. Yakında AI asistanınız hazır olacak!', 'assistant');
+        }
+
+        function addAIMessage(text, sender) {
+            const messagesContainer = document.getElementById('aiChatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `ai-message ${sender}`;
+            messageDiv.textContent = text;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const aiInput = document.getElementById('aiChatInput');
+            if (aiInput) {
+                aiInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendAIMessage();
+                    }
+                });
+            }
+        });
+
+        document.getElementById('editModalOverlay').onclick = closeEditModal;
+        document.getElementById('shareModalOverlay').onclick = closeShareModal;
+        document.getElementById('nameModalOverlay').onclick = (e) => {
+            if (!currentUser) {
+                alert('Lütfen adınızı ve soyadınızı girmeniz gerekiyor!');
+            }
+        };
+
+        // Mobilde sidebar dışına tıklandığında kapat
+        document.getElementById('map').addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar.classList.contains('active')) {
+                    sidebar.classList.remove('active');
+                }
+            }
+        });
+
+        initMap();
+        showNameModal();
+        loadShareIdFromURL();
+    </script>
+</body>
+</html>
