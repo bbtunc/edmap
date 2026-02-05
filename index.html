@@ -907,6 +907,9 @@ async function askGeminiAI(question, context) {
 
             // YENİ EKLENEN: data.kml dosyasını otomatik yükle
             autoLoadGithubKML();
+           // YENİ EKLENEN: KMZ dosyasını yükler
+            autoLoadGithubKMZ();
+        
         };
 
         // YENİ FONKSİYON: GitHub'daki data.kml dosyasını çeker ve haritaya işler
